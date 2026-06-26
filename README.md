@@ -12,6 +12,18 @@ contributors.
 > consume retry counters on your key — read the [Safety](#safety) section before
 > using PIN features.
 
+---
+
+
+
+
+> [!TIP]
+> The app is available on **Google Play** and can also be downloaded as a standalone APK from this repository's **Releases** section.
+>
+> <a href="https://play.google.com/store/apps/details?id=com.token2.lkcompanion">
+>   <img src="google_play.svg" alt="Get it on Google Play" height="60">
+> </a>
+
  
 
 ## Table of contents
