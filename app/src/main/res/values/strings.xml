@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Libre Key Companion</string>
+    <string name="tap_prompt">Tap a security key to the back of the phone (NFC), or plug one in over USB-C.</string>
+    <string name="waiting">Waiting for a security key…</string>
+</resources>

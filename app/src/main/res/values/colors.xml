@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Palette from the design mockup -->
+    <color name="lkc_accent">#FC3864</color>          <!-- hot pink: active tab, FAB, accent icons -->
+    <color name="lkc_accent_dark">#E02953</color>
+    <color name="lkc_background">#EFEFEF</color>      <!-- app background -->
+    <color name="lkc_surface">#FFFFFF</color>         <!-- cards, sheets, bottom bar -->
+    <color name="lkc_text_primary">#101426</color>   <!-- near-black headings/icons -->
+    <color name="lkc_text_secondary">#3E3E3E</color> <!-- body text -->
+    <color name="lkc_text_muted">#8A8A8E</color>
+    <!-- faint decorative blob tints -->
+    <color name="lkc_blob_a">#F3F3F3</color>
+    <color name="lkc_blob_b">#F8F8F8</color>
+    <color name="lkc_blob_c">#FFFAFB</color>
+    <color name="lkc_on_accent">#FFFFFF</color>
+</resources>

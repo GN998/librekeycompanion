@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MaterialComponents NoActionBar: required by BottomNavigationView, and
+         NoActionBar lets our own Toolbar be the action bar. Palette comes from
+         the design mockup: light gray ground, white surfaces, hot-pink accent. -->
+    <style name="Theme.LibreKeyCompanion" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/lkc_accent</item>
+        <item name="colorPrimaryDark">@color/lkc_accent_dark</item>
+        <item name="colorAccent">@color/lkc_accent</item>
+        <item name="colorSecondary">@color/lkc_accent</item>
+        <item name="android:colorBackground">@color/lkc_background</item>
+        <item name="colorSurface">@color/lkc_surface</item>
+        <item name="android:windowBackground">@drawable/window_background</item>
+        <item name="android:statusBarColor">@color/lkc_accent_dark</item>
+    </style>
+
+    <!-- Bottom navigation: white bar, pink active item, muted inactive. -->
+    <style name="LkcBottomNav">
+        <item name="itemIconTint">@color/bottom_nav_item</item>
+        <item name="itemTextColor">@color/bottom_nav_item</item>
+    </style>
+</resources>

@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+            app:contentInsetStartWithNavigation="0dp"
+            app:contentInsetStart="12dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginEnd="8dp">
+
+                <ImageView
+                    android:id="@+id/toolbarLogo"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:src="@drawable/ic_logo"
+                    android:background="@drawable/logo_border"
+                    android:padding="1dp"
+                    android:contentDescription="Logo" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="14dp">
+                    <TextView
+                        android:id="@+id/toolbarTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Libre Key Companion"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/toolbarSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#FFFFFF"
+                        android:alpha="0.85"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.appcompat.widget.Toolbar>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <!-- ===== Info pane (overview / launcher) ===== -->
+            <LinearLayout
+                android:id="@+id/paneInfo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Key overview"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:paddingBottom="8dp" />
+
+                <LinearLayout
+                    android:id="@+id/infoCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/status_card_bg"
+                    android:elevation="2dp"
+                    android:padding="4dp" />
+
+                <TextView
+                    android:id="@+id/infoHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:alpha="0.7"
+                    android:paddingTop="10dp"
+                    android:text="Tap a present applet to manage it." />
+            </LinearLayout>
+
+            <!-- ===== TOTP pane ===== -->
+            <LinearLayout
+                android:id="@+id/paneTotp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/statusCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/status_card_bg"
+                    android:elevation="2dp"
+                    android:layout_marginBottom="10dp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/statusText"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="On-device OTP"
+                        android:textStyle="bold"
+                        android:textSize="15sp" />
+
+                    <ImageButton
+                        android:id="@+id/btnRefresh"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:src="@drawable/ic_refresh"
+                        app:tint="@color/lkc_text_secondary"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Refresh" />
+
+                    <ImageButton
+                        android:id="@+id/btnAdd"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:src="@drawable/ic_add"
+                        app:tint="@color/lkc_accent"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Add entry" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/armedHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:alpha="0.7"
+                    android:paddingBottom="4dp"
+                    android:text="Tap your key to refresh." />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/otpList"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+            </LinearLayout>
+
+            <!-- ===== FIDO2 pane ===== -->
+            <LinearLayout
+                android:id="@+id/paneFido"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/fidoCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/status_card_bg"
+                    android:elevation="2dp"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:id="@+id/fidoStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/fidoArmedHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:alpha="0.7"
+                    android:paddingVertical="4dp"
+                    android:text="Tap your key to read FIDO2 status." />
+            </LinearLayout>
+        </FrameLayout>
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/lkc_surface"
+            app:itemIconTint="@color/bottom_nav_item"
+            app:itemTextColor="@color/bottom_nav_item"
+            app:menu="@menu/bottom_nav" />
+    </LinearLayout>
+
+    <!-- ===== Passkey screen (full-screen overlay, opened from FIDO2 "Manage") ===== -->
+    <LinearLayout
+        android:id="@+id/panePasskeys"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:background="?android:attr/colorBackground">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="?attr/colorPrimary"
+            android:paddingHorizontal="4dp">
+            <ImageButton
+                android:id="@+id/btnPasskeyBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_back"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Back" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Passkeys"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingStart="8dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/passkeyHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:alpha="0.7"
+            android:padding="16dp"
+            android:text="Tap your key to load passkeys." />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/passkeyList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingHorizontal="16dp" />
+    </LinearLayout>
+
+    <!-- ===== Fingerprints screen (full-screen overlay, opened from FIDO2 "Fingerprints") ===== -->
+    <LinearLayout
+        android:id="@+id/paneFingerprints"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:background="?android:attr/colorBackground">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="?attr/colorPrimary"
+            android:paddingHorizontal="4dp">
+            <ImageButton
+                android:id="@+id/btnFpBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_back"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Back" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Fingerprints"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingStart="8dp" />
+        </LinearLayout>
+
+        <!-- Content header row (below the bar) — keeps the + aligned with the OTP tab's +. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Enrolled fingerprints"
+                android:textStyle="bold"
+                android:textSize="15sp" />
+
+            <ImageButton
+                android:id="@+id/btnFpAdd"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:src="@drawable/ic_add"
+                app:tint="@color/lkc_accent"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Add fingerprint" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/fpHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:alpha="0.7"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="8dp"
+            android:text="Tap your key to load fingerprints." />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/fpList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingHorizontal="16dp" />
+    </LinearLayout>
+
+    <!-- NFC tap overlay -->
+    <LinearLayout
+        android:id="@+id/nfcOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="#E6000000">
+
+        <FrameLayout
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:layout_marginBottom="24dp">
+            <View
+                android:id="@+id/nfcPulseCircle"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_gravity="center"
+                android:background="@drawable/nfc_circle_bg" />
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_logo"
+                android:contentDescription="Tap key" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/nfcOverlayTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hold your key to the phone"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/nfcOverlaySubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Waiting for NFC tap…"
+            android:textColor="#CCFFFFFF"
+            android:textSize="14sp"
+            android:paddingTop="8dp" />
+
+        <Button
+            android:id="@+id/nfcOverlayCancel"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="24dp" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="9dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/rowIcon"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginEnd="12dp"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/rowLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp" />
+        <TextView
+            android:id="@+id/rowSecondary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:alpha="0.6"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- copy affordance (e.g. next to aaguid) -->
+    <ImageButton
+        android:id="@+id/rowCopy"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:src="@drawable/ic_copy"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Copy"
+        android:visibility="gone" />
+
+    <!-- state chip -->
+    <TextView
+        android:id="@+id/rowChip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="3dp"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginStart="6dp"
+        android:visibility="gone" />
+
+    <!-- action button (Set / Change / Toggle / Manage) -->
+    <Button
+        android:id="@+id/rowAction"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:paddingHorizontal="12dp"
+        android:textSize="13sp"
+        android:layout_marginStart="4dp"
+        android:visibility="gone" />
+</LinearLayout>

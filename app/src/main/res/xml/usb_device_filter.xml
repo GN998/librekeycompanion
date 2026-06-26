@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CCID smart-card interface class (0x0B = 11) — YubiKey 5, Token2 PIN+ w/ CCID, etc. -->
+    <usb-device class="11" />
+    <!-- Token2 keys: vendor 0x349E = 13470 (product IDs vary by model). -->
+    <usb-device vendor-id="13470" />
+    <!-- Yubico: vendor 0x1050 = 4112. Covers FIDO-only keys (Security Key series)
+         that have no CCID interface and so don't match the class filter above. -->
+    <usb-device vendor-id="4112" />
+</resources>

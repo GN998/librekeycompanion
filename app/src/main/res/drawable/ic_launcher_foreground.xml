@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Centered within the adaptive-icon safe zone (~66dp of the 108 canvas).
+         A key shaft + bow over concentric contactless arcs, in white, echoing the
+         uploaded logo's central mark. -->
+    <group
+        android:translateX="54"
+        android:translateY="55"
+        android:scaleX="1.05"
+        android:scaleY="1.05">
+        <!-- contactless arcs (upper) -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.6"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"
+            android:pathData="M -14,-19 A 20,20 0 0 1 14,-19" />
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.6"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"
+            android:pathData="M -9,-13.5 A 13,13 0 0 1 9,-13.5" />
+        <!-- key bow (ring) -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3.2"
+            android:fillColor="#00000000"
+            android:pathData="M 0,-2 m -8,0 a 8,8 0 1 1 16,0 a 8,8 0 1 1 -16,0" />
+        <!-- key shaft + teeth -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3.2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000"
+            android:pathData="M 0,6 L 0,22 M 0,14 L 6,14 M 0,19 L 5,19" />
+    </group>
+</vector>
