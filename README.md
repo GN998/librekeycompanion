@@ -12,7 +12,7 @@ contributors.
 > consume retry counters on your key — read the [Safety](#safety) section before
 > using PIN features.
 
----
+ 
 
 ## Table of contents
 
