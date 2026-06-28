@@ -1165,6 +1165,17 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
             onAction = if (i.supportsBioEnroll) { { openFingerprintScreen() } } else null,
         ))
 
+        // Reset FIDO2 — erase all passkeys and clear the PIN (factory reset).
+        rows.add(StatusCard.Row(
+            iconRes = R.drawable.ic_warning,
+            label = "Reset FIDO2",
+            secondary = "erase all passkeys & PIN",
+            chipText = "Danger",
+            chipState = StatusCard.State.DANGER,
+            actionText = "Reset",
+            onAction = { confirmResetFido() },
+        ))
+
         fidoStatusCard.render(rows)
     }
 
@@ -1191,6 +1202,22 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
     private fun closePasskeyScreen() {
         passkeyScreenOpen = false
         panePasskeys.visibility = View.GONE
+    }
+
+    // --- FIDO2 reset ---
+    private fun confirmResetFido() {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Erase everything?")
+            .setMessage("This permanently erases every passkey on the key and removes " +
+                "its PIN. The key returns to a factory state and this cannot be undone.\n\n" +
+                "Some keys only accept a reset within a few seconds of being connected — " +
+                "if it fails, re-tap (or unplug and replug) the key and try again immediately.")
+            .setPositiveButton("Erase everything") { _, _ ->
+                fidoRepo.arm(FidoRepository.PendingOp.ResetFido)
+                showNfcOverlay("Hold your key to the phone", "Resetting FIDO2…")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // --- fingerprints screen ---
@@ -1439,8 +1466,15 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
                             "No fingerprints enrolled. Tap “Add fingerprint”." else summary
                     } else fidoArmedHint.text = summary
                 }
-                is FidoRepository.OpResult.Success ->
+                is FidoRepository.OpResult.Success -> {
                     fidoArmedHint.text = result.message
+                    toast(result.message)
+                    // If the user was in the passkey screen, drop back to the FIDO card.
+                    if (passkeyScreenOpen) {
+                        passkeyAdapter.submit(emptyList())
+                        closePasskeyScreen()
+                    }
+                }
                 is FidoRepository.OpResult.Failure -> {
                     if (passkeyScreenOpen) passkeyHint.text = "Failed: ${result.message}"
                     else fidoArmedHint.text = "Failed: ${result.message}"
