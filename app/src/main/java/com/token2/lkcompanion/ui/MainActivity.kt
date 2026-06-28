@@ -314,6 +314,12 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
             RECEIVER_NOT_EXPORTED)
         registerReceiver(usbDetachReceiver,
             IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED), RECEIVER_NOT_EXPORTED)
+        // Runtime receiver for hot-plug: pick up a key plugged in while the app is
+        // already open. This is NOT a manifest intent-filter, so it does not bring
+        // back the global "open this app?" launch prompt from issue #1 — that prompt
+        // only comes from a manifest-declared USB_DEVICE_ATTACHED filter.
+        registerReceiver(usbAttachReceiver,
+            IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED), RECEIVER_NOT_EXPORTED)
     }
 
     /**
@@ -473,6 +479,19 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
             // dialog for a device that's mid-unplug (or a re-enumerating composite key).
             suppressScanUntil = System.currentTimeMillis() + 1500
             clearKeyData("Key unplugged.")
+        }
+    }
+
+    private val usbAttachReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != UsbManager.ACTION_USB_DEVICE_ATTACHED) return
+            val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE) ?: return
+            if (connectedUsbDevice != null) return        // already handling a key
+            if (!looksLikeKey(device)) return
+            // Fresh user-initiated plug: don't let a recent detach suppress it.
+            suppressScanUntil = 0L
+            if (usbManager.hasPermission(device)) openUsb(device)
+            else requestUsbPermission(device)
         }
     }
 
@@ -1790,6 +1809,7 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
         super.onDestroy()
         runCatching { unregisterReceiver(usbReceiver) }
         runCatching { unregisterReceiver(usbDetachReceiver) }
+        runCatching { unregisterReceiver(usbAttachReceiver) }
         runCatching { usbExecutor.shutdownNow() }
     }
 }
