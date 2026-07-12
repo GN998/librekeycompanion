@@ -11,6 +11,14 @@
         android:title="Forget remembered PIN"
         app:showAsAction="never" />
     <item
+        android:id="@+id/menu_interfaces"
+        android:title="HID-HOTP (Token2)"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_yk_apps"
+        android:title="Applications (YubiKey)"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/menu_usb_diag"
         android:title="USB diagnostics"
         app:showAsAction="never" />

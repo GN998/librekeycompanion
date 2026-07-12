@@ -22,12 +22,35 @@ class Token2Repository {
         object Refresh : PendingOp()
         data class Add(val entry: Token2Codec.Entry, val allowOverwrite: Boolean = false) : PendingOp()
         data class Delete(val app: String, val account: String) : PendingOp()
+        /** Read the key's current interface configuration (§6.9). */
+        object ReadConfig : PendingOp()
+        /**
+         * Enable/disable USB interfaces (§6.8). Fields are the desired ENABLED
+         * state of each interface; the client enforces the two-interface minimum.
+         */
+        data class SetInterfaces(
+            val fido: Boolean,
+            val keyboard: Boolean,
+            val ccid: Boolean,
+        ) : PendingOp()
     }
+
+    /** Snapshot of which USB interfaces the key currently exposes (§6.9). */
+    data class IfaceState(
+        val fido: Boolean,
+        val keyboard: Boolean,
+        val ccid: Boolean,
+        /** Model support, so the UI can grey out toggles the key can't offer. */
+        val keyboardSupported: Boolean,
+        val ccidSupported: Boolean,
+    )
 
     /** Result of executing an op against a tapped key. */
     sealed class OpResult {
         data class Success(val message: String, val entries: List<Token2Codec.Entry>) : OpResult()
         data class Failure(val message: String) : OpResult()
+        /** Current interface configuration, for the enable/disable dialog. */
+        data class Config(val iface: IfaceState) : OpResult()
         /** The key already has an entry with this issuer/account; ask before overwriting. */
         data class DuplicateExists(
             val entry: Token2Codec.Entry,
@@ -94,6 +117,29 @@ class Token2Repository {
                     cachedEntries = entries
                     pending = PendingOp.Refresh
                     OpResult.Success("Deleted ${op.app}/${op.account}", entries)
+                }
+                is PendingOp.ReadConfig -> {
+                    val info = client.readConfig()
+                    pending = PendingOp.Refresh
+                    OpResult.Config(
+                        IfaceState(
+                            fido = !info.fidoDisabled,
+                            keyboard = !info.keyboardHidDisabled,
+                            ccid = !info.ccidDisabled,
+                            // FIDO is always present on these keys; keyboard/CCID
+                            // support come from the capability bytes.
+                            keyboardSupported = info.hotpSupported,
+                            ccidSupported = info.ccidSupported,
+                        )
+                    )
+                }
+                is PendingOp.SetInterfaces -> {
+                    client.setInterfaces(op.fido, op.keyboard, op.ccid)
+                    pending = PendingOp.Refresh
+                    OpResult.Success(
+                        "Interface configuration updated. Re-plug or re-tap the key for it to take effect.",
+                        cachedEntries,
+                    )
                 }
             }
         } catch (e: Token2Exception.ButtonPressRequired) {

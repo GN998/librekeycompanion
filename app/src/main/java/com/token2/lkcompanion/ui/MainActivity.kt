@@ -60,6 +60,11 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
     private val repo = Token2Repository()
     private lateinit var oathAdapter: com.token2.lkcompanion.oathui.OathEntryAdapter
     private val oathRepo = com.token2.lkcompanion.oathui.OathRepository()
+
+    // YubiKey Management applet (enable/disable applications). Runs on the next
+    // tap regardless of tab; `managementPending` gates that one-shot dispatch.
+    private val managementRepo = com.token2.lkcompanion.management.ManagementRepository()
+    @Volatile private var managementPending = false
     /** Which OTP applet the current key uses, decided at read time. */
     private var otpIsOath = false
 
@@ -554,7 +559,10 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
                 ?: throw IllegalStateException("openDevice returned null")
             val transport = UsbCcidTransport(conn, iface, eps.first, eps.second)
             try {
-                if (mode == Mode.INFO) readInfoOverlay(transport, device)
+                if (managementPending) {
+                    managementPending = false
+                    runManagementTap(transport)
+                } else if (mode == Mode.INFO) readInfoOverlay(transport, device)
                 else readToken2(transport)
             } finally {
                 transport.close()
@@ -641,6 +649,13 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
 
     // --- on tap: route to the active tab's operation ---
     private fun runWithTransport(transport: SmartCardTransport) {
+        // A pending Management-applet op (enable/disable apps) runs on the next
+        // tap regardless of which tab is showing, then clears.
+        if (managementPending) {
+            managementPending = false
+            Thread { try { runManagementTap(transport) } finally { transport.close() } }.start()
+            return
+        }
         when (mode) {
             Mode.FIDO -> { runFidoTap(transport); return }
             Mode.INFO -> { Thread { try { readInfoOverlay(transport) } finally { transport.close() } }.start(); return }
@@ -682,9 +697,335 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
                 }
                 is Token2Repository.OpResult.Failure ->
                     armedHint.text = "Failed: ${result.message}"
+                is Token2Repository.OpResult.Config -> {
+                    adapter.submit(repo.cachedEntries)
+                    showInterfaceDialog(result.iface)
+                }
                 Token2Repository.OpResult.NotAToken2Key -> { /* handled above */ }
             }
         }
+    }
+
+    /**
+     * Enable/disable the key's USB interfaces (FIDO / keyboard-HID / CCID),
+     * §6.8. Presented with the current state pre-filled; enforces the
+     * two-interface minimum both here (Apply disabled) and in the client.
+     */
+    private fun showInterfaceDialog(state: Token2Repository.IfaceState) {
+        // Custom view: a framework CheckBox (always renders; no null-text
+        // measurement bug like MaterialSwitch, and unlike setMultiChoiceItems it
+        // can coexist with explanatory text). FIDO and CCID are always left
+        // enabled, so toggling this can never brick the key.
+        val ctx = this
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        val container = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, pad, pad, 0)
+        }
+        val info = android.widget.TextView(ctx).apply {
+            text = "Enable or disable the key's keyboard-HID interface, which types " +
+                "HOTP codes on a button touch. FIDO2 and the smart-card interface " +
+                "are left untouched. Re-plug the key for the change to take effect."
+            textSize = 14f
+            setPadding(0, 0, 0, pad)
+        }
+        val cb = android.widget.CheckBox(ctx).apply {
+            text = "Keyboard-HID enabled (HOTP-on-touch)"
+            isChecked = state.keyboard
+        }
+        container.addView(info)
+        container.addView(cb)
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            .setTitle("HID-HOTP interface")
+            .setView(container)
+            .setPositiveButton("Apply") { _, _ ->
+                val kbd = cb.isChecked
+                if (kbd == state.keyboard) armedHint.text = "No change to apply."
+                else confirmInterfaceChange(state, kbd)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /** Final confirmation before toggling keyboard-HID, then arm + tap. */
+    private fun confirmInterfaceChange(
+        before: Token2Repository.IfaceState,
+        keyboard: Boolean,
+    ) {
+        val verb = if (keyboard) "enable" else "disable"
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Reconfigure interface?")
+            .setMessage(
+                "Keyboard-HID will be ${verb}d.\n\nThis reconfigures the hardware. " +
+                    "Re-plug the key afterwards for the change to take effect."
+            )
+            .setPositiveButton("Reconfigure") { _, _ ->
+                // FIDO and CCID stay enabled; only keyboard varies.
+                repo.arm(Token2Repository.PendingOp.SetInterfaces(
+                    fido = true, keyboard = keyboard, ccid = true))
+                // USB-only: drive the write over the already-plugged key.
+                if (connectedUsbDevice != null) rereadUsbForCurrentTab()
+                else toast("Plug the Token2 key into USB to apply.")
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ===== YubiKey Management applet: enable/disable applications =====
+
+    /** Runs the armed Management op against a tapped/plugged YubiKey. */
+    private fun runManagementTap(transport: SmartCardTransport) {
+        val result = managementRepo.executeOn(transport)
+        runOnUiThread {
+            hideNfcOverlay()
+            when (result) {
+                is com.token2.lkcompanion.management.ManagementRepository.OpResult.Info ->
+                    showApplicationsDialog(result.info)
+                is com.token2.lkcompanion.management.ManagementRepository.OpResult.Success ->
+                    toast(result.message)
+                is com.token2.lkcompanion.management.ManagementRepository.OpResult.Locked -> {
+                    // Offer to retry with a lock code.
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle("Configuration locked")
+                        .setMessage(result.message + "\n\nEnter the lock code to retry.")
+                        .setPositiveButton("Enter code", null)
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                    // The user re-opens the dialog from the menu; the pending write
+                    // that failed is cleared, so nothing is retried automatically.
+                }
+                is com.token2.lkcompanion.management.ManagementRepository.OpResult.Failure ->
+                    toast("Failed: ${result.message}")
+                com.token2.lkcompanion.management.ManagementRepository.OpResult.NoManagementApplet ->
+                    toast("No management applet — not a YubiKey 5-series key?")
+            }
+        }
+    }
+
+    /**
+     * Per-application enable/disable dialog for a YubiKey, over USB and (if the
+     * key supports it) NFC. Only *supported* applications are shown; each has a
+     * USB switch and, when available, an NFC switch. Guards against disabling the
+     * transport currently in use and against leaving no applications on a
+     * transport.
+     */
+    private fun showApplicationsDialog(
+        info: com.token2.lkcompanion.management.YkManagementClient.DeviceInfo,
+    ) {
+        val mgmt = com.token2.lkcompanion.management.YkManagementClient
+        val ctx = this
+        val pad = (16 * resources.displayMetrics.density).toInt()
+
+        val root = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad + pad, pad, pad + pad, 0)
+        }
+
+        // Header row: USB / NFC column labels.
+        val header = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+        }
+        header.addView(android.widget.TextView(ctx).apply {
+            text = "Application"; layoutParams = android.widget.LinearLayout.LayoutParams(0,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 2f)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        header.addView(android.widget.TextView(ctx).apply {
+            text = "USB"; layoutParams = android.widget.LinearLayout.LayoutParams(0,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            gravity = android.view.Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        if (info.nfcAvailable) header.addView(android.widget.TextView(ctx).apply {
+            text = "NFC"; layoutParams = android.widget.LinearLayout.LayoutParams(0,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            gravity = android.view.Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        root.addView(header)
+
+        // Which transport are we connected over right now? Disallow turning off
+        // the last app on that transport (would drop the connection we're using).
+        val onNfc = connectedUsbDevice == null    // no USB device => this tap is NFC
+
+        data class Row(
+            val app: com.token2.lkcompanion.management.YkManagementClient.Application,
+            val usb: com.google.android.material.materialswitch.MaterialSwitch?,
+            val nfc: com.google.android.material.materialswitch.MaterialSwitch?,
+        )
+        val rows = ArrayList<Row>()
+
+        for (app in mgmt.APPLICATIONS) {
+            val usbSupported = info.usbHas(app.bit)
+            val nfcSupported = info.nfcAvailable && info.nfcHas(app.bit)
+            if (!usbSupported && !nfcSupported) continue    // not on this key at all
+
+            val line = android.widget.LinearLayout(ctx).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(0, pad / 2, 0, pad / 2)
+            }
+            line.addView(android.widget.TextView(ctx).apply {
+                text = "${app.name}\n${app.description}"
+                textSize = 13f
+                layoutParams = android.widget.LinearLayout.LayoutParams(0,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 2f)
+            })
+            val usbSw = if (usbSupported)
+                com.google.android.material.materialswitch.MaterialSwitch(ctx).apply {
+                    showText = false; textOn = ""; textOff = ""
+                    isChecked = info.usbOn(app.bit)
+                } else null
+            line.addView(usbSw ?: android.widget.Space(ctx), android.widget.LinearLayout.LayoutParams(0,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f).also {
+                it.gravity = android.view.Gravity.CENTER })
+
+            var nfcSw: com.google.android.material.materialswitch.MaterialSwitch? = null
+            if (info.nfcAvailable) {
+                nfcSw = if (nfcSupported)
+                    com.google.android.material.materialswitch.MaterialSwitch(ctx).apply {
+                        showText = false; textOn = ""; textOff = ""
+                        isChecked = info.nfcOn(app.bit)
+                    } else null
+                line.addView(nfcSw ?: android.widget.Space(ctx), android.widget.LinearLayout.LayoutParams(0,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f).also {
+                    it.gravity = android.view.Gravity.CENTER })
+            }
+            root.addView(line)
+            rows.add(Row(app, usbSw, nfcSw))
+        }
+
+        val warn = android.widget.TextView(ctx).apply {
+            setPadding(0, pad, 0, 0); textSize = 12f
+        }
+        root.addView(warn)
+
+        val scroll = android.widget.ScrollView(ctx).apply { addView(root) }
+
+        val subtitle = buildString {
+            append("YubiKey")
+            info.serial?.let { append(" · S/N $it") }
+            append(" · fw ${info.firmware}")
+            if (info.configLocked) append(" · 🔒 locked")
+        }
+
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            .setTitle("Applications")
+            .setMessage(
+                subtitle + "\n\nEnable or disable each application per transport. " +
+                    "Disabling all applications that use an interface turns that " +
+                    "interface off. The key reboots to apply — you may need to " +
+                    "remove and reinsert it."
+            )
+            .setView(scroll)
+            .setPositiveButton("Apply", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        fun usbMask(): Int {
+            var m = 0
+            for (r in rows) if (r.usb?.isChecked == true) m = m or r.app.bit
+            return m
+        }
+        fun nfcMask(): Int {
+            var m = 0
+            for (r in rows) if (r.nfc?.isChecked == true) m = m or r.app.bit
+            return m
+        }
+        fun validate(): String? {
+            if (usbMask() == 0 && !onNfc)
+                return "At least one USB application must stay enabled — you're connected over USB."
+            if (info.nfcAvailable && nfcMask() == 0 && onNfc)
+                return "At least one NFC application must stay enabled — you're connected over NFC."
+            return null
+        }
+        fun refresh() {
+            val err = validate()
+            warn.text = err ?: "Ready to apply."
+            warn.setTextColor(if (err != null) 0xFFB00020.toInt() else 0x99888888.toInt())
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.isEnabled = err == null
+        }
+        val listener = android.widget.CompoundButton.OnCheckedChangeListener { _, _ -> refresh() }
+        for (r in rows) { r.usb?.setOnCheckedChangeListener(listener); r.nfc?.setOnCheckedChangeListener(listener) }
+
+        dialog.setOnShowListener {
+            refresh()
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val newUsb = usbMask()
+                val newNfc = if (info.nfcAvailable) nfcMask() else null
+                val unchanged = newUsb == info.usbEnabled &&
+                    (newNfc == null || newNfc == info.nfcEnabled)
+                if (unchanged) { toast("No changes to apply."); dialog.dismiss(); return@setOnClickListener }
+                dialog.dismiss()
+                confirmApplicationChange(info, newUsb, newNfc)
+            }
+        }
+        dialog.show()
+    }
+
+    /** Confirm, prompt for a lock code if the key is locked, then arm + tap. */
+    private fun confirmApplicationChange(
+        info: com.token2.lkcompanion.management.YkManagementClient.DeviceInfo,
+        newUsb: Int, newNfc: Int?,
+    ) {
+        fun proceed(lockCode: ByteArray?) {
+            managementRepo.arm(
+                com.token2.lkcompanion.management.ManagementRepository.PendingOp.SetCapabilities(
+                    usbEnabled = newUsb, nfcEnabled = newNfc, lockCode = lockCode
+                )
+            )
+            managementPending = true
+            showNfcOverlay("Hold your key to the phone", "Applying application changes…")
+        }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Reconfigure applications?")
+            .setMessage(
+                "This changes which applications the key exposes and reboots it. " +
+                    "Continue?"
+            )
+            .setPositiveButton("Reconfigure") { _, _ ->
+                if (info.configLocked) promptLockCode { code -> proceed(code) }
+                else proceed(null)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /** Prompt for the 16-byte config lock, entered as 32 hex characters. */
+    private fun promptLockCode(onCode: (ByteArray) -> Unit) {
+        val input = android.widget.EditText(this).apply {
+            hint = "32 hex characters (16 bytes)"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            filters = arrayOf(android.text.InputFilter.LengthFilter(32))
+        }
+        val pad = (16 * resources.displayMetrics.density).toInt()
+        val wrap = android.widget.FrameLayout(this).apply {
+            setPadding(pad + pad, pad, pad + pad, 0); addView(input)
+        }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Configuration lock code")
+            .setMessage("This key's configuration is locked. Enter its 16-byte lock code as hex.")
+            .setView(wrap)
+            .setPositiveButton("Unlock & apply") { _, _ ->
+                val hex = input.text.toString().trim().replace(" ", "")
+                val bytes = hexToBytesOrNull(hex)
+                if (bytes == null || bytes.size != com.token2.lkcompanion.management.YkManagementClient.LOCK_LEN)
+                    toast("Lock code must be exactly 32 hex characters.")
+                else onCode(bytes)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun hexToBytesOrNull(hex: String): ByteArray? {
+        if (hex.length % 2 != 0) return null
+        return try {
+            ByteArray(hex.length / 2) { i ->
+                hex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
+            }
+        } catch (e: Exception) { null }
     }
 
     /** OTP read via the standard OATH applet. Swaps the OTP list to the OATH adapter. */
@@ -1770,6 +2111,31 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
         R.id.menu_forget_pin -> {
             fidoRepo.forgetPin()
             toast("Remembered PIN cleared")
+            true
+        }
+        R.id.menu_interfaces -> {
+            // HID-HOTP config is USB-only here: require a key plugged into the
+            // phone's USB-C port. Don't show the NFC "present your key" overlay.
+            val usbDev = connectedUsbDevice
+            if (usbDev == null) {
+                toast("Plug the Token2 key into USB to change HID-HOTP.")
+            } else {
+                if (mode != Mode.TOTP) goToTab(Mode.TOTP, R.id.nav_totp)
+                repo.arm(Token2Repository.PendingOp.ReadConfig)
+                // Drive the read over the already-connected USB device directly.
+                rereadUsbForCurrentTab()
+            }
+            true
+        }
+        R.id.menu_yk_apps -> {
+            // Read the YubiKey's application config on the next tap, then show the
+            // toggle dialog. Runs regardless of tab (managementPending gates it).
+            managementRepo.arm(
+                com.token2.lkcompanion.management.ManagementRepository.PendingOp.ReadInfo
+            )
+            managementPending = true
+            showNfcOverlay("Hold your key to the phone", "Reading YubiKey applications…")
+            rereadUsbForCurrentTab()   // drive it now if already on USB
             true
         }
         R.id.menu_usb_diag -> {
