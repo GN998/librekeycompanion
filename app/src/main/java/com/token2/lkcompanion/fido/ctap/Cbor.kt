@@ -104,13 +104,25 @@ object Cbor {
     }
 
     private fun encodeMap(out: ByteArrayOutputStream, map: Map<*, *>) {
-        // CTAP canonical: keys sorted. Int keys sort by value; we keep insertion
-        // order for already-correct callers but sort int-keyed maps to be safe.
-        val entries = map.entries.toList()
-        val allInt = entries.all { it.key is Int }
-        val ordered = if (allInt) entries.sortedBy { (it.key as Int) } else entries
+        val encodedEntries = map.entries.map { it to encode(it.key) }
+        val ordered = encodedEntries.sortedWith(Comparator { e1, e2 ->
+            val b1 = e1.second
+            val b2 = e2.second
+            
+            // Modified using the author's suggestion: length-first sorting
+            if (b1.size != b2.size) return@Comparator b1.size.compareTo(b2.size)
+            for (i in b1.indices) {
+                val c = (b1[i].toInt() and 0xFF).compareTo(b2[i].toInt() and 0xFF)
+                if (c != 0) return@Comparator c
+            }
+            0
+        })
+
         writeHead(out, 5, ordered.size.toLong())
-        for (e in ordered) { encodeInto(out, e.key); encodeInto(out, e.value) }
+        for ((entry, _) in ordered) {
+            encodeInto(out, entry.key)
+            encodeInto(out, entry.value)
+        }
     }
 
     private fun writeHead(out: ByteArrayOutputStream, major: Int, len: Long) {
