@@ -11,8 +11,8 @@ android {
         applicationId = "com.token2.lkcompanion"
         minSdk = 26          // API 26: USB Host + modern NFC reader mode
         targetSdk = 35       // API 35 required by Google Play; enables edge-to-edge
-        versionCode = 35
-        versionName = "1.0.0"
+        versionCode = 36
+        versionName = "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
