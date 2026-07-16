@@ -7,12 +7,7 @@ Libre Key Companion talks to FIDO2/CTAP2, OATH, Token2, OpenPGP and PIV keys ove
 **NFC** and **USB-C**, from a single app. It is provided by Token2 Sàrl and the
 contributors.
 
-> ⚠️ **Status: beta (v0.9.x).** The read and management features below work and have
-> been exercised on real hardware, but this is pre-1.0 software. Some operations
-> consume retry counters on your key — read the [Safety](#safety) section before
-> using PIN features.
 
- 
 
 
 
